@@ -1,17 +1,66 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, X } from 'lucide-react';
 import { motion } from 'motion/react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import { PORTFOLIO_DATA, ProjectItem } from '../data/portfolioData';
 import ProjectVisuals from './ProjectVisuals';
 
 export default function SelectedWork() {
+  const [projects, setProjects] = useState<ProjectItem[]>(
+    PORTFOLIO_DATA.projects.items
+  );
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
 
   useEffect(() => {
+    async function loadProjects() {
+      try {
+        const snapshot = await getDocs(collection(db, 'projects'));
+
+        if (snapshot.empty) return;
+
+        const staticProjects = PORTFOLIO_DATA.projects.items;
+
+        const firebaseProjects = snapshot.docs.map((document, index) => {
+          const data = document.data();
+
+          const fallback =
+            staticProjects.find((project) => project.id === document.id) ??
+            staticProjects[index % staticProjects.length];
+
+          return {
+            ...fallback,
+            id: document.id,
+            title: String(data.title ?? fallback.title),
+            category: String(data.category ?? fallback.category),
+            description: String(data.description ?? fallback.description),
+            number: String(data.number ?? String(index + 1).padStart(2, '0')),
+            focusAreas: Array.isArray(data.focusAreas)
+              ? data.focusAreas.map(String)
+              : fallback.focusAreas,
+            methodologyNote: String(
+              data.methodologyNote ?? fallback.methodologyNote
+            ),
+            featured: Boolean(data.featured ?? false),
+          } as ProjectItem;
+        });
+
+        setProjects(firebaseProjects);
+      } catch (error) {
+        console.error('Projects loading failed:', error);
+      }
+    }
+
+    loadProjects();
+  }, []);
+
+  useEffect(() => {
     if (!selectedProject) return;
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedProject(null);
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedProject]);
@@ -19,17 +68,17 @@ export default function SelectedWork() {
   return (
     <section id="selected-work" className="border-b border-[#171717]">
       <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-20 lg:py-28">
-        {/* Top Metadata Strip */}
+
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-[#D6D1C4] mb-12">
           <span className="font-mono-label text-xs tracking-[0.16em] text-[#171717] uppercase font-semibold">
             {PORTFOLIO_DATA.projects.sectionLabel}
           </span>
+
           <span className="font-mono-label text-[11px] tracking-[0.18em] text-[#D52E2E] uppercase font-medium">
-            4 ACADEMIC & APPLIED STUDIES
+            {projects.length} ACADEMIC & APPLIED STUDIES
           </span>
         </div>
 
-        {/* Heading Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end mb-14 lg:mb-16">
           <div className="lg:col-span-6">
             <h2 className="font-display uppercase leading-[0.88] tracking-tight text-[clamp(3.5rem,7.5vw,6.75rem)] text-[#171717]">
@@ -45,18 +94,20 @@ export default function SelectedWork() {
           </div>
         </div>
 
-        {/* Two-Column Editorial Project Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
-          {PORTFOLIO_DATA.projects.items.map((project, idx) => (
+          {projects.map((project, idx) => (
             <motion.article
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.15 }}
-              transition={{ duration: 0.45, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.45,
+                delay: idx * 0.06,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="border border-[#171717] bg-[#F3F1EA] flex flex-col justify-between group hover:border-[#D52E2E] transition-colors duration-200"
             >
-              {/* Large Rectangular Visual Area */}
               <button
                 type="button"
                 onClick={() => setSelectedProject(project)}
@@ -68,13 +119,13 @@ export default function SelectedWork() {
                 </div>
               </button>
 
-              {/* Editorial Card Copy */}
               <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
                     <span className="font-mono-label text-[11px] tracking-[0.16em] text-[#D52E2E] font-semibold uppercase">
                       {project.category}
                     </span>
+
                     <span className="font-display text-2xl text-[#171717]/35 group-hover:text-[#D52E2E] transition-colors">
                       {project.number}
                     </span>
@@ -96,10 +147,7 @@ export default function SelectedWork() {
                     className="inline-flex items-center gap-2 font-mono-label text-xs font-semibold tracking-[0.14em] uppercase text-[#171717] hover:text-[#D52E2E] transition-colors py-1 min-h-[40px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D52E2E]"
                   >
                     <span>EXPLORE PROJECT</span>
-                    <ArrowUpRight
-                      className="w-4 h-4 text-[#D52E2E] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                      aria-hidden="true"
-                    />
+                    <ArrowUpRight className="w-4 h-4 text-[#D52E2E] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </button>
                 </div>
               </div>
@@ -108,7 +156,6 @@ export default function SelectedWork() {
         </div>
       </div>
 
-      {/* Editorial Project Dossier Modal */}
       {selectedProject && (
         <div
           className="fixed inset-0 z-50 bg-[#171717]/80 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
@@ -121,15 +168,14 @@ export default function SelectedWork() {
             className="w-full max-w-3xl bg-[#F3F1EA] border border-[#171717] overflow-hidden my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Top Header */}
             <div className="px-6 sm:px-8 py-4 border-b border-[#171717] flex items-center justify-between gap-4 bg-[#EAE6DC]">
               <div className="flex items-center gap-3">
                 <span className="font-mono-label text-xs font-semibold tracking-[0.16em] text-[#D52E2E]">
                   PROJECT {selectedProject.number}
                 </span>
-                <span className="text-[#171717]/30" aria-hidden="true">
-                  /
-                </span>
+
+                <span className="text-[#171717]/30">/</span>
+
                 <span className="font-mono-label text-xs tracking-[0.14em] text-[#171717]/80 uppercase">
                   {selectedProject.category}
                 </span>
@@ -139,18 +185,16 @@ export default function SelectedWork() {
                 type="button"
                 onClick={() => setSelectedProject(null)}
                 aria-label="Close project details"
-                className="w-10 h-10 border border-[#171717]/25 hover:border-[#D52E2E] hover:bg-[#D52E2E] text-[#171717] hover:text-[#F3F1EA] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D52E2E]"
+                className="w-10 h-10 border border-[#171717]/25 hover:border-[#D52E2E] hover:bg-[#D52E2E] text-[#171717] hover:text-[#F3F1EA] flex items-center justify-center transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Artwork */}
             <div className="aspect-[16/9] border-b border-[#171717] overflow-hidden">
               <ProjectVisuals type={selectedProject.visualType} />
             </div>
 
-            {/* Project Dossier Details */}
             <div className="p-6 sm:p-8 space-y-6">
               <div>
                 <h3
@@ -159,6 +203,7 @@ export default function SelectedWork() {
                 >
                   {selectedProject.title}
                 </h3>
+
                 <p className="text-base leading-[1.7] text-[#171717]/85">
                   {selectedProject.description}
                 </p>
@@ -169,13 +214,14 @@ export default function SelectedWork() {
                   <span className="block font-mono-label text-[11px] tracking-[0.16em] text-[#D52E2E] font-semibold uppercase mb-3">
                     SCOPE & FOCUS
                   </span>
+
                   <ul className="space-y-2">
                     {selectedProject.focusAreas.map((area) => (
                       <li
                         key={area}
                         className="text-sm text-[#171717] flex items-center gap-2.5"
                       >
-                        <span className="w-1.5 h-1.5 bg-[#D52E2E] shrink-0" aria-hidden="true" />
+                        <span className="w-1.5 h-1.5 bg-[#D52E2E] shrink-0" />
                         <span>{area}</span>
                       </li>
                     ))}
@@ -186,6 +232,7 @@ export default function SelectedWork() {
                   <span className="block font-mono-label text-[11px] tracking-[0.16em] text-[#D52E2E] font-semibold uppercase mb-3">
                     PROJECT APPROACH
                   </span>
+
                   <p className="text-sm leading-[1.68] text-[#52504A]">
                     {selectedProject.methodologyNote}
                   </p>
@@ -199,7 +246,7 @@ export default function SelectedWork() {
                   className="inline-flex items-center gap-2 font-mono-label text-xs font-semibold tracking-[0.14em] uppercase text-[#D52E2E] hover:text-[#171717] transition-colors"
                 >
                   <span>DISCUSS THIS WORK</span>
-                  <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+                  <ArrowUpRight className="w-4 h-4" />
                 </a>
 
                 <button

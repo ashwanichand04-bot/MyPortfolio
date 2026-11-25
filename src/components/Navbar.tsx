@@ -1,24 +1,57 @@
 import { useState, useEffect } from 'react';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { NAV_LINKS, PORTFOLIO_DATA } from '../data/portfolioData';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [monogram, setMonogram] = useState(PORTFOLIO_DATA.monogram);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileDoc = await getDoc(doc(db, 'portfolio', 'profile'));
+
+        if (profileDoc.exists()) {
+          const name = profileDoc.data().name;
+
+          if (name) {
+            const initials = name
+              .trim()
+              .split(/\s+/)
+              .map((part: string) => part[0])
+              .join('')
+              .toUpperCase();
+
+            setMonogram(initials);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching navbar profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 16);
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMobileOpen(false);
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [mobileOpen]);
@@ -32,16 +65,15 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 h-16 flex items-center justify-between gap-6 lg:gap-8">
-        {/* Zone 1: Personal Monogram */}
+
         <a
           href="#top"
           className="font-display text-2xl tracking-wider text-[#171717] hover:text-[#D52E2E] transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D52E2E]"
           aria-label="Ashwani Chand Katoch — Back to top"
         >
-          {PORTFOLIO_DATA.monogram}
+          {monogram}
         </a>
 
-        {/* Zone 2: Clean Single-Line Navigation */}
         <nav
           aria-label="Primary Navigation"
           className="hidden xl:flex items-center gap-6 2xl:gap-8"
@@ -57,7 +89,6 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Zone 3: Primary CTA + Mobile Trigger */}
         <div className="flex items-center gap-4 shrink-0">
           <a
             href="#contact"
@@ -80,13 +111,15 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Responsive Mobile Navigation Drawer */}
       {mobileOpen && (
         <div
           id="mobile-navigation-drawer"
           className="xl:hidden bg-[#F3F1EA] border-t border-[#D6D1C4] px-5 sm:px-8 py-6"
         >
-          <nav aria-label="Mobile Navigation" className="flex flex-col divide-y divide-[#D6D1C4]">
+          <nav
+            aria-label="Mobile Navigation"
+            className="flex flex-col divide-y divide-[#D6D1C4]"
+          >
             {NAV_LINKS.map((item, idx) => (
               <a
                 key={item.href}
@@ -101,6 +134,7 @@ export default function Navbar() {
               </a>
             ))}
           </nav>
+
           <div className="pt-5 mt-2 border-t border-[#171717]/15">
             <a
               href="#contact"

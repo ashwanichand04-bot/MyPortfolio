@@ -1,12 +1,44 @@
+import { useEffect, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { PORTFOLIO_DATA } from '../data/portfolioData';
 
 export default function About() {
+  const [leadStatement, setLeadStatement] = useState(
+    PORTFOLIO_DATA.about.leadStatement
+  );
+  const [body, setBody] = useState(PORTFOLIO_DATA.about.body);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileDoc = await getDoc(doc(db, 'portfolio', 'profile'));
+
+        if (profileDoc.exists()) {
+          const data = profileDoc.data();
+
+          if (data.aboutLeadStatement) {
+            setLeadStatement(data.aboutLeadStatement);
+          }
+
+          if (data.aboutBody) {
+            setBody(data.aboutBody);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching about section:', error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
   return (
     <section id="about" className="border-b border-[#171717]">
       <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-20 lg:py-28">
-        {/* Section Header Strip */}
+
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-[#D6D1C4] mb-12 lg:mb-16">
           <span className="font-mono-label text-xs tracking-[0.16em] text-[#171717] uppercase font-semibold">
             {PORTFOLIO_DATA.about.sectionNumber}
@@ -16,9 +48,8 @@ export default function About() {
           </span>
         </div>
 
-        {/* Asymmetric Editorial Two-Column Spread */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-          {/* Left Column: Oversized Display Headline */}
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -34,7 +65,6 @@ export default function About() {
             </h2>
           </motion.div>
 
-          {/* Right Column: Editorial Prose & Minimal CTA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -44,13 +74,13 @@ export default function About() {
           >
             <div className="space-y-6 max-w-xl">
               <p className="text-xl sm:text-2xl font-semibold leading-[1.4] tracking-tight text-[#171717]">
-                {PORTFOLIO_DATA.about.leadStatement}
+                {leadStatement}
               </p>
 
               <div className="w-12 h-[2px] bg-[#D52E2E]" aria-hidden="true" />
 
               <p className="text-[15px] sm:text-base leading-[1.75] text-[#171717]/80">
-                {PORTFOLIO_DATA.about.body}
+                {body}
               </p>
             </div>
 
@@ -67,6 +97,7 @@ export default function About() {
               </a>
             </div>
           </motion.div>
+
         </div>
       </div>
     </section>
